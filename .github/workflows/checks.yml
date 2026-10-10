@@ -23,8 +23,11 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check background.js
+          node --check core.js
           node --check content.js
           node --check sidepanel.js
+      - name: Test extension safety and feedback utilities
+        run: node --test tests/*.test.cjs
       - name: Check all declared local assets exist
         run: |
-          node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('manifest.json','utf8')); for(const f of [m.background.service_worker,m.side_panel.default_path,'sidepanel.css','sidepanel.js','content.js']) if(!fs.existsSync(f)) throw new Error('Missing asset: '+f); console.log('assets OK')"
+          node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('manifest.json','utf8')); for(const f of [m.background.service_worker,m.side_panel.default_path,'sidepanel.css','sidepanel.js','content.js','core.js']) if(!fs.existsSync(f)) throw new Error('Missing asset: '+f); console.log('assets OK')"

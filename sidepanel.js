@@ -130,6 +130,17 @@
     try {
       const stored = await chrome.storage.local.get(PENDING_REVIEWS_KEY);
       state.pendingReviews = Array.isArray(stored[PENDING_REVIEWS_KEY]) ? stored[PENDING_REVIEWS_KEY] : [];
+      let migrated = false;
+      state.pendingReviews = state.pendingReviews.map((review) => {
+        if (review.reviewVersion !== 2) {
+          review.reviewVersion = 2;
+          review.selectedIndex = null;
+          review.reasonDraft = review.reasonDraft || "";
+          migrated = true;
+        }
+        return review;
+      });
+      if (migrated) await persistPendingReviews();
       renderPreviousReview();
     } catch (error) {
       showError("Could not load previous-task feedback from Chrome storage: " + getErrorMessage(error));
@@ -180,6 +191,7 @@
     const scoresByIndex = new Map((result.ranking || []).map((item) => [item.index, item.score]));
     const record = {
       taskId: result.task_id,
+      reviewVersion: 2,
       createdAt: Date.now(),
       profile: (result.profile && result.profile.label) || "Best-Image",
       predictedIndex: result.winner_index,
@@ -286,8 +298,20 @@
       }
       $("previousReasonInput").value = "";
       $("previousFeedbackStatus").textContent = "Saved. " + ((result.personalization && result.personalization.message) || result.message || "");
-      showNotice("Previous-task feedback was saved locally. The selected candidate will inform the evaluator's preference learner." +
-        (result.reason_saved ? " The explanation was saved too." : " No explanation text was saved."));
+      const tagLabels = {
+        prompt_match: "prompt/subject match",
+        visual_clarity: "sharpness/clarity",
+        resolution_quality: "resolution",
+        text_or_spelling: "text/spelling (not yet scored)",
+        object_counting: "exact counting (not yet scored)",
+        spatial_relations: "spatial relations (not reliably scored)",
+        composition: "composition/framing",
+        other: "general feedback"
+      };
+      const topics = (result.reason_tags || []).map((tag) => tagLabels[tag] || tag);
+      showNotice("Previous-task feedback was saved locally. The chosen image updates the existing preference learner." +
+        (result.reason_saved ? " Explanation saved." : " No explanation text was saved.") +
+        (topics.length ? " Detected feedback topics: " + topics.join(", ") + ". Topic tags help diagnose missing capabilities; they are not new vision scores." : ""));
     } catch (error) {
       showError(getErrorMessage(error));
     } finally {
@@ -341,7 +365,7 @@
   }
 
   async function ensureContentScript(tabId) {
-    await chrome.scripting.executeScript({ target: { tabId: tabId }, files: ["content.js"] });
+    await chrome.scripting.executeScript({ target: { tabId: tabId }, files: ["core.js", "content.js"] });
   }
 
   async function sendTabMessage(tabId, message) {
@@ -776,7 +800,20 @@
       state.pendingReviews = state.pendingReviews.filter((item) => item.taskId !== state.result.task_id);
       await persistPendingReviews();
       renderPreviousReview();
-      $("feedbackStatus").textContent = "Saved locally · " + (feedback.feedback_count || 0) + " reviewed comparison(s). " + ((feedback.personalization && feedback.personalization.message) || feedback.message || "");
+      const tagLabels = {
+        prompt_match: "prompt/subject match",
+        visual_clarity: "sharpness/clarity",
+        resolution_quality: "resolution",
+        text_or_spelling: "text/spelling (not yet scored)",
+        object_counting: "exact counting (not yet scored)",
+        spatial_relations: "spatial relations (not reliably scored)",
+        composition: "composition/framing",
+        other: "general feedback"
+      };
+      const topics = (feedback.reason_tags || []).map((tag) => tagLabels[tag] || tag);
+      $("feedbackStatus").textContent = "Saved locally · " + (feedback.feedback_count || 0) + " reviewed comparison(s). " +
+        ((feedback.personalization && feedback.personalization.message) || feedback.message || "") +
+        (topics.length ? " Feedback topics: " + topics.join(", ") + ". These tags are diagnostic and do not create a new scoring capability." : "");
       showNotice("Your preference was saved in the local feedback database. It will influence future comparisons when enough informative feedback exists.");
     } catch (error) {
       showError(getErrorMessage(error));

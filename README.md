@@ -39,7 +39,7 @@ This is an unpacked developer extension, not a published Chrome Web Store packag
 ## Typical workflow
 
 - Click **Scan this page**.
-- Verify the extracted prompt and check the 2–6 image cards you want to compare.
+- Verify the extracted prompt and check the 2–6 image cards you want to compare. If more than six candidates are found, none are preselected to avoid mixing in unrelated page images.
 - If necessary, edit the prompt manually.
 - Choose a scoring profile and click **Analyze locally**.
 - Review the ranked recommendation and use **Select winner on page**. If the site uses a custom selection mechanism the extension cannot identify, it will highlight/scroll to the image and ask you to click it yourself.
@@ -47,7 +47,7 @@ This is an unpacked developer extension, not a published Chrome Web Store packag
 
 ## Permissions and privacy
 
-- `activeTab` and `scripting` are used only when you explicitly scan or select on the current tab.
+- `activeTab` and `scripting` are used only when you explicitly scan or select on the current tab. The extension avoids generic submit/navigation controls during programmatic selection.
 - Optional host access is requested for the origins of selected remote images only when you analyze them. This is needed to download image bytes into the local evaluator; Chrome displays its own permission prompt when access is needed.
 - The extension does not persist prompt text, full image files, or browsing history. Until a pending feedback item is saved or dismissed, it keeps small (max 160×120) thumbnail previews and criterion scores in Chrome's local extension storage so the previous candidates remain visible after navigation.
 - Candidate images may be temporarily fetched by the extension and POSTed to `http://127.0.0.1:8765/api/analyze`. The evaluator processes uploads in memory and does not save the image files by default.
@@ -60,7 +60,7 @@ This is a generic DOM scanner, not a site-specific integration. Some platforms r
 
 ## Development checks
 
-The GitHub Actions workflow checks JavaScript syntax and validates `manifest.json` on each push and pull request.
+The GitHub Actions workflow checks JavaScript syntax, validates `manifest.json`, and runs behavior tests for candidate preselection, safe selection targets, and feedback extraction.
 
 ## License
 
