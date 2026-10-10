@@ -1,0 +1,30 @@
+name: Extension checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Validate manifest JSON and required Manifest V3 settings
+        run: |
+          node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('manifest.json','utf8')); if(m.manifest_version!==3) throw new Error('Manifest V3 required'); if(!m.side_panel || !m.background || !m.permissions.includes('activeTab') || !m.permissions.includes('scripting')) throw new Error('Required extension configuration missing'); console.log('manifest OK')"
+      - name: Check JavaScript syntax
+        run: |
+          node --check background.js
+          node --check content.js
+          node --check sidepanel.js
+      - name: Check all declared local assets exist
+        run: |
+          node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('manifest.json','utf8')); for(const f of [m.background.service_worker,m.side_panel.default_path,'sidepanel.css','sidepanel.js','content.js']) if(!fs.existsSync(f)) throw new Error('Missing asset: '+f); console.log('assets OK')"

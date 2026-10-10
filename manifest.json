@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Best-Image Companion",
+  "version": "0.1.0",
+  "description": "Compare webpage image candidates with your local Best-Image evaluator.",
+  "minimum_chrome_version": "114",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:8765/*"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open Best-Image Companion"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}

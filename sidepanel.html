@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Best-Image Companion</title>
+  <link rel="stylesheet" href="sidepanel.css">
+  <script src="sidepanel.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-mark" aria-hidden="true">B</div>
+    <div class="brand-copy">
+      <h1>Best-Image</h1>
+      <p>Local image companion</p>
+    </div>
+    <span id="serviceBadge" class="status-badge checking">Checking local AI…</span>
+  </header>
+
+  <main>
+    <section class="intro">
+      <p>Compare image candidates against the prompt, then review and select the winner on the page.</p>
+      <button id="refreshConnection" class="button button-quiet button-small" type="button">Check local service</button>
+    </section>
+
+    <section class="section">
+      <div class="section-heading">
+        <span class="step-number">1</span>
+        <div><h2>Scan this page</h2><p>Find visible candidate images and a likely prompt field.</p></div>
+      </div>
+      <button id="scanButton" class="button button-secondary full-width" type="button">Scan this page</button>
+      <p id="scanSummary" class="muted small">No page scanned yet.</p>
+      <div id="candidateList" class="candidate-list" aria-live="polite"></div>
+      <p class="hint">Choose 2–6 candidates. If a site blocks image downloads, use the local-file fallback below in the same order as the checked cards.</p>
+    </section>
+
+    <section class="section">
+      <div class="section-heading">
+        <span class="step-number">2</span>
+        <div><h2>Confirm the prompt</h2><p>The text is sent only to your local evaluator.</p></div>
+      </div>
+      <label for="promptInput">Image prompt</label>
+      <textarea id="promptInput" rows="5" maxlength="2000" placeholder="Paste or verify the exact image prompt…"></textarea>
+      <div class="field-row">
+        <label for="profileSelect">Scoring profile</label>
+        <select id="profileSelect" aria-label="Scoring profile">
+          <option value="prompt_accuracy">Prompt Accuracy</option>
+          <option value="visual_balance">Visual Balance</option>
+        </select>
+      </div>
+      <label for="replacementFiles">Optional fallback image files</label>
+      <input id="replacementFiles" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/bmp" multiple>
+      <p class="hint">Only use this fallback when remote downloads fail. Select one file for each checked card, in the same order shown above. Files are sent to 127.0.0.1, not a cloud service.</p>
+      <button id="analyzeButton" class="button button-primary full-width" type="button">Analyze locally</button>
+    </section>
+
+    <section id="resultsSection" class="section results-section" hidden>
+      <div class="section-heading">
+        <span class="step-number">3</span>
+        <div><h2>Ranking</h2><p>Comparative scores, not a guarantee of correctness.</p></div>
+      </div>
+      <div id="winnerSummary" class="winner-summary"></div>
+      <div id="rankingList" class="ranking-list"></div>
+      <div id="warningsList" class="warnings-list"></div>
+      <button id="selectWinnerButton" class="button button-primary full-width" type="button">Select winner on page</button>
+      <p id="selectionStatus" class="feedback-status" role="status"></p>
+      <div class="feedback-box">
+        <h3>Teach your local ranking</h3>
+        <p>Tell the evaluator which candidate you actually prefer. Feedback adjusts local scoring weights after enough reviews.</p>
+        <button id="acceptAiButton" class="button button-secondary full-width" type="button">AI pick is right</button>
+        <label for="preferredCandidate">Or select the image you prefer</label>
+        <select id="preferredCandidate"></select>
+        <button id="saveFeedbackButton" class="button button-quiet full-width" type="button">Save my preference</button>
+        <p id="feedbackStatus" class="feedback-status" role="status"></p>
+      </div>
+    </section>
+
+    <div id="errorBox" class="error-box" role="alert" hidden></div>
+    <div id="noticeBox" class="notice-box" role="status" hidden></div>
+  </main>
+
+  <footer>
+    <p>Local-first • No auto-submit • You make the final choice</p>
+  </footer>
+</body>
+</html>
