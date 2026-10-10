@@ -14,7 +14,7 @@ test("does not click dangerous navigation or submit controls", () => {
   assert.equal(core.isSafeSelectionTarget({ tagName: "BUTTON", type: "submit", innerText: "Select image", getAttribute: () => null }, {}), false);
   assert.equal(core.isSafeSelectionTarget({ tagName: "A", type: "", innerText: "Image 2", getAttribute: () => null, querySelector: () => ({ tagName: "IMG" }) }, {}), false);
   assert.equal(core.isSafeSelectionTarget({ tagName: "BUTTON", type: "button", innerText: "Next", getAttribute: () => null, querySelector: () => null }, {}), false);
-  assert.equal(core.isSafeSelectionTarget({ tagName: "BUTTON", type: "button", innerText: "Select image", getAttribute: () => null, querySelector: () => null }, {}), true);
+  assert.equal(core.isSafeSelectionTarget({ tagName: "BUTTON", type: "button", innerText: "Select image", getAttribute: () => null, querySelector: (selector) => selector === "img" ? ({ tagName: "IMG" }) : null, contains: () => true }, {}), true);
 });
 
 test("does not treat a bare image or generic wrapper as a selection control", () => {
