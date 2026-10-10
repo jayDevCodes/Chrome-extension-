@@ -15,7 +15,7 @@ The extension does not auto-submit forms or complete tasks on your behalf. You r
 
 ## Requirements
 
-- Google Chrome 114 or newer (the extension uses the Side Panel API).
+- Google Chrome 116 or newer (the extension opens its side panel with `chrome.sidePanel.open()`).
 - The Best-Image API running locally at `http://127.0.0.1:8765`.
 - First-time Best-Image setup/model download completed as described in that repository's README.
 
