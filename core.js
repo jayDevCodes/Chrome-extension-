@@ -41,6 +41,43 @@
     }
     return Boolean(allowClickableCard);
   }
+  function planAnalysisCandidates(pageCandidates, fileCount, maxImages) {
+    const candidates = Array.isArray(pageCandidates) ? pageCandidates : [];
+    const maximum = Number.isInteger(maxImages) && maxImages > 0 ? maxImages : 6;
+    const files = Number.isInteger(fileCount) && fileCount > 0 ? fileCount : 0;
+    if (candidates.length > maximum) {
+      return { ok: false, mode: "error", candidates: [], error: "Select no more than " + maximum + " page candidates." };
+    }
+    if (candidates.length >= 2) {
+      if (files && files !== candidates.length) {
+        return { ok: false, mode: "error", candidates: [], error: "Choose exactly " + candidates.length + " fallback files in the same order as the checked page candidates, or clear the file picker." };
+      }
+      return { ok: true, mode: "page", candidates };
+    }
+    if (files >= 2 && files <= maximum) {
+      return {
+        ok: true,
+        mode: "files",
+        candidates: Array.from({ length: files }, (_, index) => ({
+          id: null,
+          src: "",
+          kind: "local-file",
+          width: 0,
+          height: 0,
+          description: "Local file candidate " + (index + 1),
+          selectable: false,
+          selected: true
+        }))
+      };
+    }
+    return {
+      ok: false,
+      mode: "error",
+      candidates: [],
+      error: "Choose 2–6 page candidates, or select 2–6 local image files to compare when this page cannot be scanned."
+    };
+  }
+
   function normalizeReason(reason, maxLength) {
     const limit = Number.isInteger(maxLength) && maxLength > 0 ? maxLength : 2000;
     return String(reason || "").replace(/\s+/g, " ").trim().slice(0, limit);
@@ -63,5 +100,5 @@
     matches.sort((a, b) => b.score - a.score || a.text.length - b.text.length);
     return matches.slice(0, maxItems).map((item) => item.text);
   }
-  root.BICCore = Object.freeze({ defaultSelectionIndexes, isSafeSelectionTarget, normalizeReason, extractFeedbackSnippets });
+  root.BICCore = Object.freeze({ defaultSelectionIndexes, isSafeSelectionTarget, planAnalysisCandidates, normalizeReason, extractFeedbackSnippets });
 })(typeof globalThis !== "undefined" ? globalThis : this);
