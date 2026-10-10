@@ -348,9 +348,9 @@
         prompt_match: "prompt/subject match",
         visual_clarity: "sharpness/clarity",
         resolution_quality: "resolution",
-        text_or_spelling: "text/spelling (not yet scored)",
-        object_counting: "exact counting (not yet scored)",
-        spatial_relations: "spatial relations (not reliably scored)",
+        text_or_spelling: "text/spelling (optional OCR signal)",
+        object_counting: "exact counting (optional COCO classes only)",
+        spatial_relations: "spatial relations (simple 2-D estimate only)",
         composition: "composition/framing",
         other: "general feedback"
       };
@@ -875,9 +875,9 @@
         prompt_match: "prompt/subject match",
         visual_clarity: "sharpness/clarity",
         resolution_quality: "resolution",
-        text_or_spelling: "text/spelling (not yet scored)",
-        object_counting: "exact counting (not yet scored)",
-        spatial_relations: "spatial relations (not reliably scored)",
+        text_or_spelling: "text/spelling (optional OCR signal)",
+        object_counting: "exact counting (optional COCO classes only)",
+        spatial_relations: "spatial relations (simple 2-D estimate only)",
         composition: "composition/framing",
         other: "general feedback"
       };
