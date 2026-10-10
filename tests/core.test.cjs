@@ -12,6 +12,7 @@ test("only auto-selects a small, unambiguous candidate set", () => {
 
 test("does not click dangerous navigation or submit controls", () => {
   assert.equal(core.isSafeSelectionTarget({ tagName: "BUTTON", type: "submit", innerText: "Select image", getAttribute: () => null }, {}), false);
+  assert.equal(core.isSafeSelectionTarget({ tagName: "A", type: "", innerText: "Image 2", getAttribute: () => null, querySelector: () => ({ tagName: "IMG" }) }, {}), false);
   assert.equal(core.isSafeSelectionTarget({ tagName: "BUTTON", type: "button", innerText: "Next", getAttribute: () => null, querySelector: () => ({}) }, {}), false);
   assert.equal(core.isSafeSelectionTarget({ tagName: "BUTTON", type: "button", innerText: "Select image", getAttribute: () => null, querySelector: () => ({}) }, {}), true);
 });
