@@ -97,3 +97,11 @@ footer { padding: 3px 12px 17px; text-align: center; color: #8a8da0; font-size: 
 footer p { margin: 0; }
 [hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+.previous-review-section { border-color: #d7cafe; background: #fff; }
+.review-summary { margin: 0 0 9px; padding: 10px; border-radius: 9px; background: #f6f2ff; color: #51466f; font-size: 11px; }
+.review-candidate { grid-template-columns: 18px 82px minmax(0, 1fr); }
+.review-candidate input { accent-color: var(--purple); }
+.review-candidate .candidate-thumb { width: 82px; height: 64px; }
+.review-candidate.is-predicted { border-style: dashed; }
+.review-badge { display: inline-block; margin-top: 4px; padding: 2px 5px; border-radius: 5px; background: var(--purple-soft); color: var(--purple-dark); font-size: 9px; font-weight: 750; }
+.review-actions { display: grid; gap: 7px; margin-top: 11px; }

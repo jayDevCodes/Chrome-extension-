@@ -23,6 +23,24 @@
       <button id="refreshConnection" class="button button-quiet button-small" type="button">Check local service</button>
     </section>
 
+    <section id="previousReviewSection" class="section previous-review-section" hidden>
+      <div class="section-heading">
+        <span class="step-number"><icon-placeholder></icon-placeholder>↩</span>
+        <div><h2>Previous comparison feedback</h2><p>Confirm the actual best image after the next page explains the result.</p></div>
+      </div>
+      <p id="previousReviewSummary" class="review-summary"></p>
+      <div id="previousReviewCandidates" class="candidate-list" aria-live="polite"></div>
+      <label for="previousReasonInput">Platform feedback / why this image was best</label>
+      <textarea id="previousReasonInput" rows="4" maxlength="2000" placeholder="Paste the explanation shown on the next page, or write why the chosen image is better…"></textarea>
+      <div class="review-actions">
+        <button id="capturePageFeedbackButton" class="button button-quiet full-width" type="button">Read feedback text on this page</button>
+        <button id="savePreviousFeedbackButton" class="button button-primary full-width" type="button">Save previous-task feedback</button>
+        <button id="skipPreviousFeedbackButton" class="button button-quiet full-width" type="button">Dismiss this review</button>
+      </div>
+      <p id="previousFeedbackStatus" class="feedback-status" role="status"></p>
+      <p class="hint">Small thumbnail previews are kept in Chrome's local extension storage only until you save or dismiss the review. Prompts and original image files are not retained here.</p>
+    </section>
+
     <section class="section">
       <div class="section-heading">
         <span class="step-number">1</span>
@@ -67,6 +85,8 @@
       <div class="feedback-box">
         <h3>Teach your local ranking</h3>
         <p>Tell the evaluator which candidate you actually prefer. Feedback adjusts local scoring weights after enough reviews.</p>
+        <label for="feedbackReasonInput">Why was this image better? (optional)</label>
+        <textarea id="feedbackReasonInput" rows="3" maxlength="2000" placeholder="Explain which prompt details, objects, composition, or defects made the preferred image better…"></textarea>
         <button id="acceptAiButton" class="button button-secondary full-width" type="button">AI pick is right</button>
         <label for="preferredCandidate">Or select the image you prefer</label>
         <select id="preferredCandidate"></select>

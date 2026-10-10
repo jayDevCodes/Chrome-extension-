@@ -5,6 +5,8 @@
   const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
   const MAX_TOTAL_BYTES = 40 * 1024 * 1024;
   const MAX_IMAGES = 6;
+  const MAX_PENDING_REVIEWS = 6;
+  const PENDING_REVIEWS_KEY = "bestImagePendingReviews";
 
   const $ = (id) => document.getElementById(id);
   const state = {
@@ -14,6 +16,7 @@
     requestCandidates: [],
     result: null,
     profiles: [],
+    pendingReviews: [],
     feedbackSaved: false
   };
 
@@ -101,6 +104,218 @@
       else if (state.profiles.some((profile) => profile.id === "prompt_accuracy")) select.value = "prompt_accuracy";
     } catch (_) {
       // Keep the built-in profiles as a usable fallback if the service is restarting.
+    }
+  }
+
+
+  async function persistPendingReviews() {
+    await chrome.storage.local.set({ [PENDING_REVIEWS_KEY]: state.pendingReviews });
+  }
+
+  async function loadPendingReviews() {
+    try {
+      const stored = await chrome.storage.local.get(PENDING_REVIEWS_KEY);
+      state.pendingReviews = Array.isArray(stored[PENDING_REVIEWS_KEY]) ? stored[PENDING_REVIEWS_KEY] : [];
+      renderPreviousReview();
+    } catch (error) {
+      showError("Could not load previous-task feedback from Chrome storage: " + getErrorMessage(error));
+    }
+  }
+
+  async function thumbnailDataUrl(blob) {
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(blob);
+      const maxWidth = 160;
+      const maxHeight = 120;
+      const scale = Math.min(1, maxWidth / bitmap.width, maxHeight / bitmap.height);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext("2d", { alpha: false });
+      if (!context) return "";
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const thumb = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.56));
+      canvas.width = 1;
+      canvas.height = 1;
+      if (!thumb || thumb.size > 55000) return "";
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Could not prepare a local preview."));
+        reader.readAsDataURL(thumb);
+      });
+    } catch (_) {
+      return "";
+    } finally {
+      if (bitmap) bitmap.close();
+    }
+  }
+
+  async function enqueuePendingReview(result, candidates, blobs) {
+    if (!result || !result.task_id || !Array.isArray(blobs)) return;
+    if (state.pendingReviews.some((review) => review.taskId === result.task_id)) return;
+    if (state.pendingReviews.length >= MAX_PENDING_REVIEWS) {
+      showNotice("Your previous-feedback queue is full. Save or dismiss an older review before adding more pending comparisons.");
+      return;
+    }
+
+    const thumbnails = await Promise.all(blobs.map((blob) => thumbnailDataUrl(blob)));
+    const scoresByIndex = new Map((result.ranking || []).map((item) => [item.index, item.score]));
+    const record = {
+      taskId: result.task_id,
+      createdAt: Date.now(),
+      profile: (result.profile && result.profile.label) || "Best-Image",
+      predictedIndex: result.winner_index,
+      selectedIndex: result.winner_index,
+      candidates: candidates.map((candidate, index) => ({
+        index,
+        thumbnail: thumbnails[index] || "",
+        score: Number(scoresByIndex.get(index) || 0)
+      })),
+      reasonDraft: ""
+    };
+    state.pendingReviews.push(record);
+    try {
+      await persistPendingReviews();
+      renderPreviousReview();
+    } catch (error) {
+      state.pendingReviews = state.pendingReviews.filter((review) => review.taskId !== result.task_id);
+      renderPreviousReview();
+      showNotice("Ranking completed, but Chrome could not store the deferred review. Keep this page open and provide feedback now if possible. " + getErrorMessage(error));
+    }
+  }
+
+  function renderPreviousReview() {
+    const section = $("previousReviewSection");
+    if (!section) return;
+    const record = state.pendingReviews[0];
+    section.hidden = !record;
+    if (!record) return;
+
+    const predicted = Number(record.predictedIndex);
+    $("previousReviewSummary").textContent =
+      "AI originally picked Image " + (predicted + 1) + " · " + record.candidates.length +
+      " candidates · " + record.profile +
+      ". Choose the image confirmed by the platform; you can review this after moving to the next page.";
+    const list = $("previousReviewCandidates");
+    list.replaceChildren();
+    record.candidates.forEach((candidate) => {
+      const card = make("label", "candidate-card review-candidate" +
+        (candidate.index === predicted ? " is-predicted" : "") +
+        (candidate.index === Number(record.selectedIndex) ? " is-selected" : ""));
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "previousPreferredIndex";
+      radio.value = String(candidate.index);
+      radio.checked = candidate.index === Number(record.selectedIndex);
+      radio.setAttribute("aria-label", "Previous task best image " + (candidate.index + 1));
+      const image = document.createElement("img");
+      image.className = "candidate-thumb";
+      image.alt = "Previous candidate image " + (candidate.index + 1);
+      image.src = candidate.thumbnail || "";
+      if (!candidate.thumbnail) {
+        image.removeAttribute("src");
+        image.alt = "Preview unavailable for image " + (candidate.index + 1);
+      }
+      const copy = make("span", "candidate-copy");
+      copy.appendChild(make("span", "candidate-name", "Image " + (candidate.index + 1) + " · score " + Number(candidate.score || 0).toFixed(1)));
+      copy.appendChild(make("span", "candidate-meta", candidate.index === predicted ? "AI's original pick" : "Candidate from the previous page"));
+      if (candidate.index === predicted) copy.appendChild(make("span", "review-badge", "AI PICK"));
+      card.append(radio, image, copy);
+      radio.addEventListener("change", () => {
+        record.selectedIndex = candidate.index;
+        card.parentElement.querySelectorAll(".review-candidate").forEach((other) => other.classList.remove("is-selected"));
+        card.classList.add("is-selected");
+        persistPendingReviews().catch((error) => showError(getErrorMessage(error)));
+      });
+      list.appendChild(card);
+    });
+
+    const reasonInput = $("previousReasonInput");
+    if (reasonInput && reasonInput.value !== (record.reasonDraft || "")) reasonInput.value = record.reasonDraft || "";
+    $("previousFeedbackStatus").textContent = state.pendingReviews.length > 1
+      ? "Review " + (state.pendingReviews.length) + " saved comparisons in order; this one is next."
+      : "This review survives page navigation and closing/reopening the side panel.";
+  }
+
+  async function savePreviousFeedback() {
+    clearError();
+    const record = state.pendingReviews[0];
+    if (!record) return;
+    const selectedIndex = Number(record.selectedIndex);
+    const reason = ($("previousReasonInput").value || "").trim().slice(0, 2000);
+    if (!Number.isInteger(selectedIndex) || !record.candidates.some((candidate) => candidate.index === selectedIndex)) {
+      showError("Choose the candidate confirmed by the platform before saving feedback.");
+      return;
+    }
+    $("savePreviousFeedbackButton").disabled = true;
+    $("skipPreviousFeedbackButton").disabled = true;
+    $("capturePageFeedbackButton").disabled = true;
+    try {
+      const response = await fetch(API_BASE + "/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task_id: record.taskId, preferred_index: selectedIndex, reason })
+      });
+      const result = await parseResponse(response);
+      state.pendingReviews = state.pendingReviews.filter((item) => item.taskId !== record.taskId);
+      await persistPendingReviews();
+      if (state.result && state.result.task_id === record.taskId) state.feedbackSaved = true;
+      renderPreviousReview();
+      if (state.result && state.result.task_id === record.taskId) {
+        $("acceptAiButton").disabled = true;
+        $("saveFeedbackButton").disabled = true;
+      }
+      $("previousReasonInput").value = "";
+      $("previousFeedbackStatus").textContent = "Saved. " + ((result.personalization && result.personalization.message) || result.message || "");
+      showNotice("Previous-task feedback was saved locally. The selected candidate will inform the evaluator's preference learner." +
+        (result.reason_saved ? " The explanation was saved too." : " No explanation text was saved."));
+    } catch (error) {
+      showError(getErrorMessage(error));
+    } finally {
+      $("savePreviousFeedbackButton").disabled = false;
+      $("skipPreviousFeedbackButton").disabled = false;
+      $("capturePageFeedbackButton").disabled = false;
+    }
+  }
+
+  async function capturePageFeedback() {
+    clearError();
+    try {
+      const tab = await getActiveTab();
+      await ensureContentScript(tab.id);
+      const extracted = await sendTabMessage(tab.id, { type: "BIC_EXTRACT_FEEDBACK" });
+      if (!extracted || extracted.ok === false) throw new Error((extracted && extracted.message) || "Could not extract feedback text.");
+      if (!extracted.text) {
+        showNotice("No obvious feedback sentence was found. Copy the platform's explanation into the text box manually.");
+        return;
+      }
+      $("previousReasonInput").value = extracted.text;
+      if (state.pendingReviews[0]) {
+        state.pendingReviews[0].reasonDraft = extracted.text;
+        await persistPendingReviews();
+      }
+      showNotice("Possible feedback text copied into the local review box. Check it carefully; nothing is submitted until you save the feedback.");
+    } catch (error) {
+      showError("Could not read feedback from this page: " + getErrorMessage(error));
+    }
+  }
+
+  async function dismissPreviousFeedback() {
+    const record = state.pendingReviews.shift();
+    if (!record) return;
+    try {
+      await persistPendingReviews();
+      $("previousReasonInput").value = "";
+      renderPreviousReview();
+      showNotice("Previous review dismissed without training feedback.");
+    } catch (error) {
+      state.pendingReviews.unshift(record);
+      renderPreviousReview();
+      showError(getErrorMessage(error));
     }
   }
 
@@ -407,6 +622,7 @@
       state.result = result;
       state.requestCandidates = candidates.slice();
       state.feedbackSaved = false;
+      await enqueuePendingReview(result, candidates, blobs);
       renderResults(result);
       $("resultsSection").hidden = false;
       $("resultsSection").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -536,10 +752,13 @@
       const response = await fetch(API_BASE + "/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ task_id: state.result.task_id, preferred_index: numericIndex })
+        body: JSON.stringify({ task_id: state.result.task_id, preferred_index: numericIndex, reason: ($("feedbackReasonInput").value || "").trim().slice(0, 2000) })
       });
       const feedback = await parseResponse(response);
       state.feedbackSaved = true;
+      state.pendingReviews = state.pendingReviews.filter((item) => item.taskId !== state.result.task_id);
+      await persistPendingReviews();
+      renderPreviousReview();
       $("feedbackStatus").textContent = "Saved locally · " + (feedback.feedback_count || 0) + " reviewed comparison(s). " + ((feedback.personalization && feedback.personalization.message) || feedback.message || "");
       showNotice("Your preference was saved in the local feedback database. It will influence future comparisons when enough informative feedback exists.");
     } catch (error) {
@@ -549,6 +768,16 @@
       $("saveFeedbackButton").disabled = state.feedbackSaved;
     }
   }
+
+  $("capturePageFeedbackButton").addEventListener("click", capturePageFeedback);
+  $("savePreviousFeedbackButton").addEventListener("click", savePreviousFeedback);
+  $("skipPreviousFeedbackButton").addEventListener("click", dismissPreviousFeedback);
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (tabId === state.tabId && changeInfo.status === "complete" && state.pendingReviews.length) {
+      renderPreviousReview();
+      showNotice("The page changed. Your previous comparison is still saved above; confirm its correct image if feedback is available.");
+    }
+  });
 
   $("refreshConnection").addEventListener("click", async () => {
     clearError();
@@ -564,4 +793,5 @@
   $("saveFeedbackButton").addEventListener("click", () => saveFeedback($("preferredCandidate").value));
 
   checkLocalService();
+  loadPendingReviews();
 })();

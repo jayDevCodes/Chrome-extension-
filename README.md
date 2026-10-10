@@ -9,9 +9,9 @@ A local-first Chrome Manifest V3 side-panel extension that connects a webpage's 
 3. Ask the local Best-Image API to rank the selected images.
 4. Review the winning score, criterion breakdown, and limitations.
 5. Click **Select winner on page** to try selecting/highlighting the corresponding original image.
-6. Send your preference back to the local evaluator so its feedback learner can improve future rankings.
+6. If you advance to the next page and get feedback about the previous choice, the pending-review card remains in the side panel. Select which previous image was truly best, optionally copy the platform's feedback text (or paste it yourself), and save it to the local learner.
 
-The extension does not auto-submit forms or complete tasks on your behalf. You review the winner and perform any final submission yourself. The prompt and candidate image bytes are sent only to the local Best-Image service at `127.0.0.1`; there is no extension analytics or remote inference service.
+The extension does not auto-submit forms or complete tasks on your behalf. You review the winner and perform any final submission yourself. The prompt and candidate image bytes are sent only to the local Best-Image service at `127.0.0.1`; there is no extension analytics or remote inference service. Optional human-written feedback reasons are saved only in the local Best-Image SQLite database.
 
 ## Requirements
 
@@ -49,7 +49,7 @@ This is an unpacked developer extension, not a published Chrome Web Store packag
 
 - `activeTab` and `scripting` are used only when you explicitly scan or select on the current tab.
 - Optional host access is requested for the origins of selected remote images only when you analyze them. This is needed to download image bytes into the local evaluator; Chrome displays its own permission prompt when access is needed.
-- The extension keeps scan results and prompt text in side-panel memory. It does not persist prompts, image content, or browsing history.
+- The extension does not persist prompt text, full image files, or browsing history. Until a pending feedback item is saved or dismissed, it keeps small (max 160×120) thumbnail previews and criterion scores in Chrome's local extension storage so the previous candidates remain visible after navigation.
 - Candidate images may be temporarily fetched by the extension and POSTed to `http://127.0.0.1:8765/api/analyze`. The evaluator processes uploads in memory and does not save the image files by default.
 - If a site's image URL cannot be fetched (for example a page-local `blob:` URL or protected image), the extension can use the optional local-file fallback: select files in the same order as the checked candidate cards.
 - Never expose the local Best-Image server to the public internet.
