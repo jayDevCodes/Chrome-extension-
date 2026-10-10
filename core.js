@@ -33,6 +33,8 @@
     const containsImage = Boolean(target.querySelector && target.querySelector("img")) ||
       Boolean(imageElement && target.contains && target.contains(imageElement));
     if (!containsImage) return false;
+    // Do not click a generic image wrapper if it nests navigation or action controls.
+    if (target.querySelector && target.querySelector("a,button,[role='button'],input[type='submit'],input[type='reset']")) return false;
     if (tag === "button" || role === "button") {
       return /\b(select|choose|pick|image|candidate|option|variant)\b/i.test(actionText) ||
         (label.length === 0 && text.length <= 80);
