@@ -23,12 +23,21 @@ test("does not treat a bare image or generic wrapper as a selection control", ()
     tagName: "DIV", type: "", innerText: "", textContent: "",
     getAttribute: () => null,
     hasAttribute: () => false,
-    querySelector: () => ({ tagName: "IMG" }),
+    querySelector: (selector) => selector === "img" ? ({ tagName: "IMG" }) : null,
     contains: () => true
   };
   assert.equal(core.isSafeSelectionTarget(image, image), false);
   assert.equal(core.isSafeSelectionTarget(wrapper, image), false);
   assert.equal(core.isSafeSelectionTarget(wrapper, image, true), true);
+  const wrapperWithAction = {
+    tagName: "DIV", type: "", innerText: "", textContent: "",
+    getAttribute: () => null,
+    hasAttribute: () => false,
+    querySelector: (selector) => selector === "img" ? ({ tagName: "IMG" }) :
+      selector.includes("button") ? ({ tagName: "BUTTON", innerText: "Next" }) : null,
+    contains: () => true
+  };
+  assert.equal(core.isSafeSelectionTarget(wrapperWithAction, image, true), false);
 });
 
 test("accepts explicit image selection controls", () => {
