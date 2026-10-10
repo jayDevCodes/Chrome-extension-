@@ -50,7 +50,7 @@ This is an unpacked developer extension, not a published Chrome Web Store packag
 - `activeTab` and `scripting` are used only when you explicitly scan or select on the current tab. The extension avoids generic submit/navigation controls during programmatic selection.
 - Optional host access is requested for the origins of selected remote images only when you analyze them. This is needed to download image bytes into the local evaluator; Chrome displays its own permission prompt when access is needed.
 - The extension does not persist prompt text, full image files, or browsing history. Until a pending feedback item is saved or dismissed, it keeps small (max 160×120) thumbnail previews and criterion scores in Chrome's local extension storage so the previous candidates remain visible after navigation.
-- Candidate images may be temporarily fetched by the extension and POSTed to `http://127.0.0.1:8765/api/analyze`. The evaluator processes uploads in memory and does not save the image files by default.
+- Candidate images may be temporarily fetched by the extension and POSTed to `http://127.0.0.1:8765/api/analyze`. Remote image requests omit website cookies/credentials; protected images may require the local-file fallback. The evaluator processes uploads in memory and does not save the image files by default.
 - If a site's image URL cannot be fetched (for example a page-local `blob:` URL or protected image), the extension can use the optional local-file fallback: select files in the same order as the checked candidate cards.
 - Never expose the local Best-Image server to the public internet.
 
