@@ -70,7 +70,7 @@
       </div>
       <label for="replacementFiles">Optional fallback image files</label>
       <input id="replacementFiles" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/bmp" multiple>
-      <p class="hint">Only use this fallback when remote downloads fail. Select one file for each checked card, in the same order shown above. Files are sent to 127.0.0.1, not a cloud service.</p>
+      <p class="hint">If page-image downloads fail, select one file for each checked candidate in the same order. If scanning finds fewer than two candidates (for example, a canvas-based page), select 2–6 local files to rank them; the winner can’t be auto-mapped back to the webpage. Files go only to 127.0.0.1, not a cloud service.</p>
       <button id="analyzeButton" class="button button-primary full-width" type="button">Analyze locally</button>
     </section>
 
