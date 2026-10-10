@@ -15,6 +15,7 @@
     const text = String(target.innerText || target.textContent || "").replace(/\s+/g, " ").trim();
     const actionText = (label + " " + text).trim();
     if (tag === "button" && type !== "button") return false;
+    if (tag === "a") return false;
     if (type === "submit" || type === "reset") return false;
     if (ACTION_TEXT.test(label) || ACTION_TEXT.test(text)) return false;
     if (/(?:^|\b)(?:submit|next page|continue to|finish task|send response|skip task|cancel task|delete|remove|report)(?:\b|$)/i.test(actionText)) return false;
