@@ -668,7 +668,11 @@
     const pageCandidates = selectedCandidates();
     const replacements = Array.from($("replacementFiles").files || []);
     const analysisPlan = BIC.planAnalysisCandidates(pageCandidates, replacements.length, MAX_IMAGES);
-    const candidates = analysisPlan.candidates;
+    const candidates = analysisPlan.candidates.map((candidate, index) =>
+      analysisPlan.mode === "files"
+        ? Object.assign({}, candidate, { description: replacements[index].name || candidate.description })
+        : candidate
+    );
     if (!prompt) {
       showError("Enter or scan the exact prompt before analyzing.");
       $("promptInput").focus();
@@ -722,7 +726,9 @@
       $("feedbackStatus").textContent = "";
       const queuedForReview = state.pendingReviews.some((review) => review.taskId === result.task_id);
       showNotice(queuedForReview
-        ? "Ranking complete. Review the limitations and inspect the proposed winner on the page before submitting anything."
+        ? (analysisPlan.mode === "files"
+          ? "Ranking complete for local files. No webpage image mapping was available, so manually select the matching image on the task page after reviewing the recommendation."
+          : "Ranking complete. Review the limitations and inspect the proposed winner on the page before submitting anything.")
         : "Ranking complete, but the deferred-feedback queue could not store this comparison. Save or dismiss an older review, then analyze again if you need cross-page feedback for this one.");
     } catch (error) {
       showError(getErrorMessage(error));
