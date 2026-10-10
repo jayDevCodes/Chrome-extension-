@@ -432,10 +432,15 @@
   function updateSelectedSummary() {
     const count = selectedCandidates().length;
     const total = state.candidates.length;
+    const fileCount = ($("replacementFiles").files || []).length;
     $("scanSummary").textContent = total
       ? total + " candidate image" + (total === 1 ? "" : "s") + " found · " + count + " selected"
-      : "No candidate images found yet.";
-    $("analyzeButton").disabled = count < 2 || count > MAX_IMAGES;
+      : fileCount >= 2
+        ? fileCount + " local image files ready · file-only comparison"
+        : "No candidate images found yet. You can compare local files instead.";
+    const pageModeValid = count >= 2 && count <= MAX_IMAGES;
+    const fileModeValid = count < 2 && fileCount >= 2 && fileCount <= MAX_IMAGES;
+    $("analyzeButton").disabled = !(pageModeValid || fileModeValid);
   }
 
   function hostLabel(source) {
@@ -519,7 +524,7 @@
       state.feedbackSaved = false;
       if (payload.prompt && !$("promptInput").value.trim()) $("promptInput").value = payload.prompt;
       if (!state.candidates.length) {
-        showNotice("I couldn't find large visible image elements on this page. Scroll until the candidates appear, try scanning again, or use the extension's local-file fallback after choosing page candidates.");
+        showNotice("I couldn't find large visible image elements on this page. Scroll and scan again, or select 2–6 local files below to compare images even when the webpage uses canvas or protected URLs.");
       } else if (state.candidates.length > MAX_IMAGES) {
         showNotice("Found " + state.candidates.length + " possible images. None are preselected because this page has more than six; choose the actual candidates manually to avoid logos or unrelated images.");
       } else {
@@ -660,19 +665,17 @@
     $("selectionStatus").textContent = "";
     $("feedbackStatus").textContent = "";
     const prompt = $("promptInput").value.trim();
-    const candidates = selectedCandidates();
+    const pageCandidates = selectedCandidates();
     const replacements = Array.from($("replacementFiles").files || []);
+    const analysisPlan = BIC.planAnalysisCandidates(pageCandidates, replacements.length, MAX_IMAGES);
+    const candidates = analysisPlan.candidates;
     if (!prompt) {
       showError("Enter or scan the exact prompt before analyzing.");
       $("promptInput").focus();
       return;
     }
-    if (candidates.length < 2 || candidates.length > MAX_IMAGES) {
-      showError("Select between two and six candidate cards.");
-      return;
-    }
-    if (replacements.length && replacements.length !== candidates.length) {
-      showError("Choose exactly " + candidates.length + " fallback files, in the same order as the checked cards, or clear the file picker.");
+    if (!analysisPlan.ok) {
+      showError(analysisPlan.error);
       return;
     }
     if (replacements.some((file) => file.size > MAX_IMAGE_BYTES)) {
@@ -724,7 +727,12 @@
     } catch (error) {
       showError(getErrorMessage(error));
     } finally {
-      $("analyzeButton").disabled = selectedCandidates().length < 2 || selectedCandidates().length > MAX_IMAGES;
+      const chosenCount = selectedCandidates().length;
+      const chosenFileCount = ($("replacementFiles").files || []).length;
+      $("analyzeButton").disabled = !(
+        (chosenCount >= 2 && chosenCount <= MAX_IMAGES) ||
+        (chosenCount < 2 && chosenFileCount >= 2 && chosenFileCount <= MAX_IMAGES)
+      );
       $("analyzeButton").textContent = "Analyze locally";
       updateSelectedSummary();
     }
@@ -913,6 +921,10 @@
     await checkLocalService();
   });
   $("scanButton").addEventListener("click", scanPage);
+  $("replacementFiles").addEventListener("change", () => {
+    clearError();
+    updateSelectedSummary();
+  });
   $("analyzeButton").addEventListener("click", analyze);
   $("selectWinnerButton").addEventListener("click", selectWinnerOnPage);
   $("previousReasonInput").addEventListener("input", () => {
