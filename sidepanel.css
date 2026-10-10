@@ -115,3 +115,5 @@ footer p { margin: 0; }
 .feedback-theme-state.supported { color: var(--green); }
 .feedback-theme-state.missing { color: #946200; }
 .detail-row { margin-left: 7px; }
+
+.capability-summary { margin: -4px 2px 12px; line-height: 1.5; }
