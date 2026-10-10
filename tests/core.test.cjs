@@ -45,6 +45,22 @@ test("accepts explicit image selection controls", () => {
   assert.equal(core.isSafeSelectionTarget({ tagName: "DIV", type: "", innerText: "", getAttribute: (name) => name === "role" ? "radio" : null }, {}), true);
 });
 
+test("allows local-file-only comparisons when webpage candidates are not readable", () => {
+  const plan = core.planAnalysisCandidates([], 3, 6);
+  assert.equal(plan.ok, true);
+  assert.equal(plan.mode, "files");
+  assert.equal(plan.candidates.length, 3);
+  assert.equal(plan.candidates[0].id, null);
+  assert.equal(core.planAnalysisCandidates([], 1, 6).ok, false);
+});
+
+test("enforces fallback file count when page candidates are selected", () => {
+  const candidates = [{ id: "one" }, { id: "two" }];
+  assert.equal(core.planAnalysisCandidates(candidates, 0, 6).mode, "page");
+  assert.equal(core.planAnalysisCandidates(candidates, 2, 6).ok, true);
+  assert.equal(core.planAnalysisCandidates(candidates, 3, 6).ok, false);
+});
+
 test("normalizes and bounds feedback reason text", () => {
   assert.equal(core.normalizeReason("  Image   two is better  because it matches.  "), "Image two is better because it matches.");
   assert.equal(core.normalizeReason("x".repeat(2500), 2000).length, 2000);
