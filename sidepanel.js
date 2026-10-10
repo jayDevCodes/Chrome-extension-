@@ -126,6 +126,16 @@
       const response = await fetchWithTimeout(API_BASE + "/api/health", { method: "GET", cache: "no-store" }, 5000);
       const health = await parseResponse(response);
       setStatus("Local service online", "online");
+      const capabilities = health.capabilities || {};
+      const ocr = capabilities.ocr || {};
+      const detector = capabilities.object_detection || {};
+      const featureLabels = [
+        "Prompt matching: ready",
+        "OCR: " + (ocr.available ? "available" : "not installed"),
+        "Object checks: " + (detector.available ? "enabled" : "off")
+      ];
+      $("capabilitySummary").textContent = featureLabels.join(" · ") +
+        (detector.available ? " · COCO classes / simple 2-D relations only" : "");
       if (health.model && health.model.loaded === false) {
         showNotice("The local API is running. The vision model loads when you start your first analysis; its first use may take longer.");
       }
@@ -133,6 +143,7 @@
       return true;
     } catch (_) {
       setStatus("Local AI offline", "offline");
+      $("capabilitySummary").textContent = "Start Best-Image locally to check available vision features.";
       showNotice("Start Best-Image on this Mac first. Its local API should be available at http://127.0.0.1:8765. Your prompt and images stay on your computer.");
       return false;
     }
@@ -289,6 +300,7 @@
         record.selectedIndex = candidate.index;
         card.parentElement.querySelectorAll(".review-candidate").forEach((other) => other.classList.remove("is-selected"));
         card.classList.add("is-selected");
+        $("savePreviousFeedbackButton").disabled = false;
         persistPendingReviews().catch((error) => showError(getErrorMessage(error)));
       });
       list.appendChild(card);
@@ -703,7 +715,10 @@
       $("resultsSection").hidden = false;
       $("resultsSection").scrollIntoView({ behavior: "smooth", block: "start" });
       $("feedbackStatus").textContent = "";
-      showNotice("Ranking complete. Review the limitations and inspect the proposed winner on the page before submitting anything.");
+      const queuedForReview = state.pendingReviews.some((review) => review.taskId === result.task_id);
+      showNotice(queuedForReview
+        ? "Ranking complete. Review the limitations and inspect the proposed winner on the page before submitting anything."
+        : "Ranking complete, but the deferred-feedback queue could not store this comparison. Save or dismiss an older review, then analyze again if you need cross-page feedback for this one.");
     } catch (error) {
       showError(getErrorMessage(error));
     } finally {
