@@ -7,6 +7,7 @@
   const MAX_IMAGES = 6;
   const MAX_PENDING_REVIEWS = 6;
   const PENDING_REVIEWS_KEY = "bestImagePendingReviews";
+  const BIC = globalThis.BICCore;
 
   const $ = (id) => document.getElementById(id);
   const state = {
@@ -62,6 +63,19 @@
     select.appendChild(option);
   }
 
+  async function fetchWithTimeout(url, options, timeoutMs) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs || 10000);
+    try {
+      return await fetch(url, Object.assign({}, options || {}, { signal: controller.signal }));
+    } catch (error) {
+      if (error && error.name === "AbortError") throw new Error("Local request timed out. Check whether Best-Image is still running, then retry.");
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   async function parseResponse(response) {
     let payload = {};
     try { payload = await response.json(); } catch (_) {}
@@ -75,7 +89,7 @@
   async function checkLocalService() {
     setStatus("Checking local AI…", "checking");
     try {
-      const response = await fetch(API_BASE + "/api/health", { method: "GET", cache: "no-store" });
+      const response = await fetchWithTimeout(API_BASE + "/api/health", { method: "GET", cache: "no-store" }, 5000);
       const health = await parseResponse(response);
       setStatus("Local service online", "online");
       if (health.model && health.model.loaded === false) {
@@ -92,7 +106,7 @@
 
   async function loadProfiles() {
     try {
-      const response = await fetch(API_BASE + "/api/profiles", { cache: "no-store" });
+      const response = await fetchWithTimeout(API_BASE + "/api/profiles", { cache: "no-store" }, 10000);
       const payload = await parseResponse(response);
       if (!Array.isArray(payload.profiles)) return;
       state.profiles = payload.profiles;
@@ -169,7 +183,7 @@
       createdAt: Date.now(),
       profile: (result.profile && result.profile.label) || "Best-Image",
       predictedIndex: result.winner_index,
-      selectedIndex: result.winner_index,
+      selectedIndex: null,
       candidates: candidates.map((candidate, index) => ({
         index,
         thumbnail: thumbnails[index] || "",
@@ -205,12 +219,12 @@
     record.candidates.forEach((candidate) => {
       const card = make("label", "candidate-card review-candidate" +
         (candidate.index === predicted ? " is-predicted" : "") +
-        (candidate.index === Number(record.selectedIndex) ? " is-selected" : ""));
+        (candidate.index === record.selectedIndex ? " is-selected" : ""));
       const radio = document.createElement("input");
       radio.type = "radio";
       radio.name = "previousPreferredIndex";
       radio.value = String(candidate.index);
-      radio.checked = candidate.index === Number(record.selectedIndex);
+      radio.checked = candidate.index === record.selectedIndex;
       radio.setAttribute("aria-label", "Previous task best image " + (candidate.index + 1));
       const image = document.createElement("img");
       image.className = "candidate-thumb";
@@ -236,6 +250,7 @@
 
     const reasonInput = $("previousReasonInput");
     if (reasonInput && reasonInput.value !== (record.reasonDraft || "")) reasonInput.value = record.reasonDraft || "";
+    $("savePreviousFeedbackButton").disabled = !Number.isInteger(record.selectedIndex);
     $("previousFeedbackStatus").textContent = state.pendingReviews.length > 1
       ? "Review " + (state.pendingReviews.length) + " saved comparisons in order; this one is next."
       : "This review survives page navigation and closing/reopening the side panel.";
@@ -245,8 +260,8 @@
     clearError();
     const record = state.pendingReviews[0];
     if (!record) return;
-    const selectedIndex = Number(record.selectedIndex);
-    const reason = ($("previousReasonInput").value || "").trim().slice(0, 2000);
+    const selectedIndex = record.selectedIndex;
+    const reason = BIC.normalizeReason($("previousReasonInput").value || "", 2000);
     if (!Number.isInteger(selectedIndex) || !record.candidates.some((candidate) => candidate.index === selectedIndex)) {
       showError("Choose the candidate confirmed by the platform before saving feedback.");
       return;
@@ -255,11 +270,11 @@
     $("skipPreviousFeedbackButton").disabled = true;
     $("capturePageFeedbackButton").disabled = true;
     try {
-      const response = await fetch(API_BASE + "/api/feedback", {
+      const response = await fetchWithTimeout(API_BASE + "/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ task_id: record.taskId, preferred_index: selectedIndex, reason })
-      });
+      }, 10000);
       const result = await parseResponse(response);
       state.pendingReviews = state.pendingReviews.filter((item) => item.taskId !== record.taskId);
       await persistPendingReviews();
@@ -421,7 +436,7 @@
       state.tabId = tab.id;
       state.pageTitle = payload.title || "";
       state.candidates = (payload.candidates || []).map((candidate, index) => Object.assign({}, candidate, {
-        selected: index < Math.min(6, (payload.candidates || []).length)
+        selected: BIC.defaultSelectionIndexes((payload.candidates || []).length, MAX_IMAGES).includes(index)
       }));
       $("resultsSection").hidden = true;
       $("selectionStatus").textContent = "";
@@ -432,8 +447,10 @@
       if (payload.prompt && !$("promptInput").value.trim()) $("promptInput").value = payload.prompt;
       if (!state.candidates.length) {
         showNotice("I couldn't find large visible image elements on this page. Scroll until the candidates appear, try scanning again, or use the extension's local-file fallback after choosing page candidates.");
+      } else if (state.candidates.length > MAX_IMAGES) {
+        showNotice("Found " + state.candidates.length + " possible images. None are preselected because this page has more than six; choose the actual candidates manually to avoid logos or unrelated images.");
       } else {
-        showNotice("Review the prompt and checked cards before analyzing. Page scan results are temporary and are not saved.");
+        showNotice("Review the prompt and checked cards before analyzing. A set of up to six detected images may be preselected; verify they are the intended candidates.");
       }
       renderCandidateList();
     } catch (error) {
@@ -616,7 +633,7 @@
 
       $("analyzeButton").textContent = "Analyzing locally…";
       showNotice("Comparing the images locally. The first run may take longer while the vision model loads.");
-      const response = await fetch(API_BASE + "/api/analyze", { method: "POST", body: form });
+      const response = await fetchWithTimeout(API_BASE + "/api/analyze", { method: "POST", body: form }, 10 * 60 * 1000);
       const result = await parseResponse(response);
       if (!Array.isArray(result.ranking) || typeof result.winner_index !== "number") throw new Error("The evaluator returned an unexpected response.");
       state.result = result;
@@ -749,11 +766,11 @@
     $("acceptAiButton").disabled = true;
     $("saveFeedbackButton").disabled = true;
     try {
-      const response = await fetch(API_BASE + "/api/feedback", {
+      const response = await fetchWithTimeout(API_BASE + "/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ task_id: state.result.task_id, preferred_index: numericIndex, reason: ($("feedbackReasonInput").value || "").trim().slice(0, 2000) })
-      });
+        body: JSON.stringify({ task_id: state.result.task_id, preferred_index: numericIndex, reason: BIC.normalizeReason($("feedbackReasonInput").value || "", 2000) })
+      }, 10000);
       const feedback = await parseResponse(response);
       state.feedbackSaved = true;
       state.pendingReviews = state.pendingReviews.filter((item) => item.taskId !== state.result.task_id);
@@ -787,11 +804,19 @@
   $("scanButton").addEventListener("click", scanPage);
   $("analyzeButton").addEventListener("click", analyze);
   $("selectWinnerButton").addEventListener("click", selectWinnerOnPage);
+  $("previousReasonInput").addEventListener("input", () => {
+    const record = state.pendingReviews[0];
+    if (!record) return;
+    record.reasonDraft = $("previousReasonInput").value;
+    persistPendingReviews().catch((error) => showError(getErrorMessage(error)));
+  });
   $("acceptAiButton").addEventListener("click", () => {
     if (state.result) saveFeedback(state.result.winner_index);
   });
   $("saveFeedbackButton").addEventListener("click", () => saveFeedback($("preferredCandidate").value));
 
-  checkLocalService();
-  loadPendingReviews();
+  try {
+    chrome.storage.local.setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" }).catch(() => {});
+  } catch (_) {}
+  Promise.all([checkLocalService(), loadPendingReviews()]);
 })();
