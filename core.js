@@ -6,7 +6,7 @@
     if (!Number.isInteger(count) || count < 2 || count > maximum) return [];
     return Array.from({ length: count }, (_, index) => index);
   }
-  function isSafeSelectionTarget(target, imageElement) {
+  function isSafeSelectionTarget(target, imageElement, allowClickableCard) {
     if (!target) return false;
     const tag = String(target.tagName || "").toLowerCase();
     const type = String(target.type || (target.getAttribute && target.getAttribute("type")) || "").toLowerCase();
@@ -28,14 +28,15 @@
     if ((target.hasAttribute && target.hasAttribute("aria-checked")) ||
         (target.hasAttribute && target.hasAttribute("aria-selected")) ||
         (target.hasAttribute && target.hasAttribute("aria-pressed"))) return true;
-    const containsImage = tag === "img" || Boolean(target.querySelector && target.querySelector("img")) ||
+    if (tag === "img") return false;
+    const containsImage = Boolean(target.querySelector && target.querySelector("img")) ||
       Boolean(imageElement && target.contains && target.contains(imageElement));
     if (!containsImage) return false;
     if (tag === "button" || role === "button") {
       return /\b(select|choose|pick|image|candidate|option|variant)\b/i.test(actionText) ||
         (label.length === 0 && text.length <= 80);
     }
-    return true;
+    return Boolean(allowClickableCard);
   }
   function normalizeReason(reason, maxLength) {
     const limit = Number.isInteger(maxLength) && maxLength > 0 ? maxLength : 2000;

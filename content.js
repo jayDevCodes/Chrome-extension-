@@ -52,7 +52,7 @@
         const style = getComputedStyle(current);
         const rect = current.getBoundingClientRect();
         if (style.cursor === "pointer" && rect.width >= 70 && rect.height >= 60 &&
-            globalThis.BICCore && globalThis.BICCore.isSafeSelectionTarget(current, element)) {
+            globalThis.BICCore && globalThis.BICCore.isSafeSelectionTarget(current, element, true)) {
           return { target: current, selectable: true };
         }
       }

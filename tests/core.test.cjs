@@ -16,6 +16,20 @@ test("does not click dangerous navigation or submit controls", () => {
   assert.equal(core.isSafeSelectionTarget({ tagName: "BUTTON", type: "button", innerText: "Select image", getAttribute: () => null, querySelector: () => ({}) }, {}), true);
 });
 
+test("does not treat a bare image or generic wrapper as a selection control", () => {
+  const image = { tagName: "IMG", type: "", innerText: "", getAttribute: () => null };
+  const wrapper = {
+    tagName: "DIV", type: "", innerText: "", textContent: "",
+    getAttribute: () => null,
+    hasAttribute: () => false,
+    querySelector: () => ({ tagName: "IMG" }),
+    contains: () => true
+  };
+  assert.equal(core.isSafeSelectionTarget(image, image), false);
+  assert.equal(core.isSafeSelectionTarget(wrapper, image), false);
+  assert.equal(core.isSafeSelectionTarget(wrapper, image, true), true);
+});
+
 test("accepts explicit image selection controls", () => {
   assert.equal(core.isSafeSelectionTarget({ tagName: "INPUT", type: "radio", getAttribute: () => null }, {}), true);
   assert.equal(core.isSafeSelectionTarget({ tagName: "DIV", type: "", innerText: "", getAttribute: (name) => name === "role" ? "radio" : null }, {}), true);
