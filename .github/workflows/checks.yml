@@ -19,7 +19,7 @@ jobs:
           node-version: "20"
       - name: Validate manifest JSON and required Manifest V3 settings
         run: |
-          node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('manifest.json','utf8')); if(m.manifest_version!==3) throw new Error('Manifest V3 required'); if(!m.side_panel || !m.background || !m.permissions.includes('activeTab') || !m.permissions.includes('scripting')) throw new Error('Required extension configuration missing'); console.log('manifest OK')"
+          node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('manifest.json','utf8')); if(m.manifest_version!==3) throw new Error('Manifest V3 required'); if(Number(m.minimum_chrome_version)<116) throw new Error('Chrome 116+ required for sidePanel.open'); if(!m.side_panel || !m.background || !m.permissions.includes('activeTab') || !m.permissions.includes('scripting')) throw new Error('Required extension configuration missing'); console.log('manifest OK')"
       - name: Check JavaScript syntax
         run: |
           node --check background.js
