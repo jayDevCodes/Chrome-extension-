@@ -42,8 +42,8 @@ This is an unpacked developer extension, not a published Chrome Web Store packag
 - Verify the extracted prompt and check the 2–6 image cards you want to compare. If more than six candidates are found, none are preselected to avoid mixing in unrelated page images.
 - If necessary, edit the prompt manually.
 - Choose a scoring profile and click **Analyze locally**.
-- Review the ranked recommendation and use **Select winner on page**. If the site uses a custom selection mechanism the extension cannot identify, it will highlight/scroll to the image and ask you to click it yourself.
-- Submit feedback using **AI pick is right** or choose the candidate you actually prefer.
+- Review the ranked recommendation, per-detail similarity signals and score-gap warning, then use **Select winner on page**. If the site uses a custom selection mechanism the extension cannot identify, it will highlight/scroll to the image and ask you to click it yourself.
+- Submit feedback using **AI pick is right** or choose the candidate you actually prefer. Use **View past feedback themes** to see recurring categories and which capabilities are still missing.
 
 ## Permissions and privacy
 

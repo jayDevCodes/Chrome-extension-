@@ -86,6 +86,40 @@
     return payload;
   }
 
+  async function loadFeedbackInsights() {
+    clearError();
+    const button = $("feedbackInsightsButton");
+    button.disabled = true;
+    button.textContent = "Loading feedback themes…";
+    try {
+      const response = await fetchWithTimeout(API_BASE + "/api/feedback/insights", { cache: "no-store" }, 10000);
+      const payload = await parseResponse(response);
+      const output = $("feedbackInsightsOutput");
+      output.replaceChildren();
+      output.hidden = false;
+      output.appendChild(make("p", "small", (payload.total_reviews || 0) + " reviewed comparison(s) · " + (payload.reviews_with_reason || 0) + " with written reasons"));
+      const themes = Array.isArray(payload.themes) ? payload.themes : [];
+      if (!themes.length) {
+        output.appendChild(make("p", "muted small", "No categorized written feedback yet. Save a reason after reviewing a comparison to start collecting themes."));
+      } else {
+        themes.forEach((theme) => {
+          const row = make("div", "feedback-theme-row");
+          row.appendChild(make("span", "feedback-theme-label", theme.label));
+          row.appendChild(make("span", "feedback-theme-count", String(theme.count)));
+          row.appendChild(make("span", theme.has_current_signal ? "feedback-theme-state supported" : "feedback-theme-state missing",
+            theme.has_current_signal ? "existing signal" : "capability gap"));
+          output.appendChild(row);
+        });
+      }
+      output.appendChild(make("p", "hint", payload.message || "Topic labels are diagnostic; they do not create new image-understanding capabilities."));
+    } catch (error) {
+      showError(getErrorMessage(error));
+    } finally {
+      button.disabled = false;
+      button.textContent = "View past feedback themes";
+    }
+  }
+
   async function checkLocalService() {
     setStatus("Checking local AI…", "checking");
     try {
@@ -465,6 +499,7 @@
       $("resultsSection").hidden = true;
       $("selectionStatus").textContent = "";
       $("feedbackStatus").textContent = "";
+    $("feedbackInsightsOutput").hidden = true;
       state.result = null;
       state.requestCandidates = [];
       state.feedbackSaved = false;
@@ -697,7 +732,9 @@
     const summary = $("winnerSummary");
     summary.replaceChildren();
     summary.appendChild(make("strong", "", "Recommended: Image " + (result.winner_index + 1)));
-    summary.appendChild(make("p", "", "Score " + (winner ? winner.score : "—") + " / 100 · " + gap + "-point gap to the next candidate. This is a comparative signal, not a probability of being correct."));
+    const margin = winner && winner.margin_band ? winner.margin_band : (Number(result.winner_gap || 0) < 3 ? "low" : Number(result.winner_gap || 0) < 8 ? "medium" : "high");
+    const marginText = margin === "low" ? "Very close result — compare the top images carefully." : margin === "medium" ? "Moderate separation — a human check is still recommended." : "Larger score separation, but still not a correctness probability.";
+    summary.appendChild(make("p", "", "Score " + (winner ? winner.score : "—") + " / 100 · " + gap + "-point gap. " + marginText));
     if (winnerCandidate && winnerCandidate.description) {
       summary.appendChild(make("p", "", winnerCandidate.description));
     }
@@ -725,6 +762,25 @@
         row.append(left, make("span", "criteria-score", Number(criterion.score).toFixed(0)));
         card.appendChild(row);
       });
+
+      if (Array.isArray(item.requirement_scores) && item.requirement_scores.length) {
+        const detailsTitle = make("span", "criteria-label", "Prompt detail signals");
+        detailsTitle.style.display = "block";
+        detailsTitle.style.marginTop = "10px";
+        card.appendChild(detailsTitle);
+        item.requirement_scores.forEach((detail) => {
+          const row = make("div", "criteria-row detail-row");
+          const left = make("div", "");
+          left.appendChild(make("span", "criteria-label", detail.requirement || "Prompt detail"));
+          const meter = make("div", "meter");
+          const fill = make("div", "meter-fill");
+          fill.style.width = Math.max(0, Math.min(100, Number(detail.score) || 0)) + "%";
+          meter.appendChild(fill);
+          left.appendChild(meter);
+          row.append(left, make("span", "criteria-score", Number(detail.score).toFixed(0)));
+          card.appendChild(row);
+        });
+      }
 
       if (Array.isArray(item.reasons) && item.reasons.length) {
         const reasons = make("ul", "reason-list");
@@ -833,6 +889,7 @@
     }
   });
 
+  $("feedbackInsightsButton").addEventListener("click", loadFeedbackInsights);
   $("refreshConnection").addEventListener("click", async () => {
     clearError();
     clearNotice();
