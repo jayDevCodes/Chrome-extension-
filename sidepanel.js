@@ -608,7 +608,7 @@
     if (/^(blob:|data:image\/)/i.test(candidate.src)) {
       blob = await capturePageLocalImage(candidate);
     } else {
-      const response = await fetch(candidate.src, { credentials: "include", cache: "force-cache" });
+      const response = await fetch(candidate.src, { credentials: "omit", cache: "force-cache" });
       if (!response.ok) throw new Error("Image " + (state.candidates.indexOf(candidate) + 1) + " could not be downloaded (HTTP " + response.status + "). Try local-file fallback.");
       blob = await response.blob();
     }
