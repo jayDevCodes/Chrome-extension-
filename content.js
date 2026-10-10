@@ -45,13 +45,14 @@
   function findSelectionTarget(element) {
     let current = element;
     for (let depth = 0; current && depth < 7; depth += 1, current = current.parentElement) {
-      if (current.matches("input[type='radio'], button, label, [role='radio'], [role='option'], [role='button'], [aria-pressed]")) {
+      if (globalThis.BICCore && globalThis.BICCore.isSafeSelectionTarget(current, element)) {
         return { target: current, selectable: true };
       }
       if (current !== element) {
         const style = getComputedStyle(current);
         const rect = current.getBoundingClientRect();
-        if (style.cursor === "pointer" && rect.width >= 70 && rect.height >= 60) {
+        if (style.cursor === "pointer" && rect.width >= 70 && rect.height >= 60 &&
+            globalThis.BICCore && globalThis.BICCore.isSafeSelectionTarget(current, element)) {
           return { target: current, selectable: true };
         }
       }
@@ -228,20 +229,10 @@
       "p", "li", "blockquote"
     ];
     const elements = Array.from(document.querySelectorAll(selectors.join(","))).filter(visible);
-    const seen = new Set();
-    const matches = [];
-    const terms = /\b(correct|incorrect|not correct|wrong|better|best|because|feedback|should have|you chose|you selected|preferred|right image|reason|the ideal image|the best candidate)\b/i;
-    for (const element of elements) {
-      const text = (element.innerText || element.textContent || "").replace(/\s+/g, " ").trim();
-      if (text.length < 20 || text.length > 900 || !terms.test(text) || seen.has(text)) continue;
-      seen.add(text);
-      let score = 1;
-      if (/\b(correct|incorrect|wrong|you chose|you selected|should have|the best candidate)\b/i.test(text)) score += 3;
-      if (/\b(because|reason|feedback)\b/i.test(text)) score += 2;
-      matches.push({ text, score });
-    }
-    matches.sort((a, b) => b.score - a.score || a.text.length - b.text.length);
-    const chosen = matches.slice(0, 6).map((item) => "• " + item.text);
+    const snippets = globalThis.BICCore
+      ? globalThis.BICCore.extractFeedbackSnippets(elements.map((element) => element.innerText || element.textContent || ""), 6, 900)
+      : [];
+    const chosen = snippets.map((item) => "• " + item);
     return { ok: true, text: chosen.join("\n").slice(0, 3200), count: chosen.length };
   }
 
