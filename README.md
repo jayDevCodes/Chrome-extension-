@@ -11,7 +11,7 @@ A local-first Chrome Manifest V3 side-panel extension that connects a webpage's 
 5. Click **Select winner on page** to try selecting/highlighting the corresponding original image.
 6. If you advance to the next page and get feedback about the previous choice, the pending-review card remains in the side panel. Select which previous image was truly best, optionally copy the platform's feedback text (or paste it yourself), and save it to the local learner.
 
-The extension does not auto-submit forms or complete tasks on your behalf. You review the winner and perform any final submission yourself. The prompt and candidate image bytes are sent only to the local Best-Image service at `127.0.0.1`; there is no extension analytics or remote inference service. Optional human-written feedback reasons are saved only in the local Best-Image SQLite database.
+The extension does not auto-submit forms or complete tasks on your behalf. You review the winner and perform any final submission yourself. The prompt and candidate image bytes are sent only to the local Best-Image service at `127.0.0.1`; there is no extension analytics or remote inference service. Optional human-written feedback reasons are saved only in the local Best-Image SQLite database. The status line also shows whether Best-Image's optional SmolVLM2 detail review is off, needs dependencies, or is ready to run on demand.
 
 ## Requirements
 

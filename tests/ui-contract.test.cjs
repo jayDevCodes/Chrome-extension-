@@ -24,3 +24,10 @@ test("feedback review is backed by extension-local storage", () => {
 test("candidate image fetch does not forward website cookies", () => {
   assert.match(js, /fetch\(candidate\.src, \{ credentials: "omit"/);
 });
+
+
+test("side panel surfaces optional local VLM review availability", () => {
+  assert.match(js, /capabilities\.vlm_review/);
+  assert.match(js, /VLM detail review:/);
+  assert.match(js, /ready on demand/);
+});

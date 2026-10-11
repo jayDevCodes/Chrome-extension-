@@ -130,11 +130,13 @@
       const ocr = capabilities.ocr || {};
       const detector = capabilities.object_detection || {};
       const preference = capabilities.preference_reward || {};
+      const vlm = capabilities.vlm_review || {};
       const featureLabels = [
         "Prompt matching: ready",
         "OCR: " + (ocr.available ? "available" : "not installed"),
         "Object checks: " + (detector.available ? "enabled" : "off"),
-        "Human preference: " + (preference.available ? "available" : "off")
+        "Human preference: " + (preference.available ? "available" : "off"),
+        "VLM detail review: " + (vlm.available ? "ready on demand" : vlm.enabled ? "needs dependencies" : "off")
       ];
       $("capabilitySummary").textContent = featureLabels.join(" · ") +
         (detector.available ? " · COCO classes / simple 2-D relations only" : "");
